@@ -537,7 +537,7 @@ export class TwitterInteractionClient {
                     "twitter"
                 );
 
-                this.runtime.messageManager.createMemory({
+                await this.runtime.messageManager.createMemory({
                     id: stringToUuid(
                         currentTweet.id + "-" + this.runtime.agentId
                     ),
@@ -560,7 +560,10 @@ export class TwitterInteractionClient {
                         currentTweet.userId === this.twitterUserId
                             ? this.runtime.agentId
                             : stringToUuid(currentTweet.userId),
-                    embedding: getEmbeddingZeroVector(),
+                    embedding: await generateEmbedding(
+                        this.runtime,
+                        currentTweet.text
+                    ),
                 });
             }
 
@@ -626,5 +629,14 @@ export class TwitterInteractionClient {
         });
 
         return thread;
+    }
+}
+
+async function generateEmbedding(runtime: IAgentRuntime, text: string) {
+    try {
+        return await runtime.embed(text);
+    } catch (error) {
+        elizaLogger.error("Failed to generate embedding:", error);
+        return getEmbeddingZeroVector(); // Fallback only if embedding fails
     }
 }

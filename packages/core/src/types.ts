@@ -1114,6 +1114,9 @@ export interface IAgentRuntime {
     ): Promise<State>;
 
     updateRecentMessageState(state: State): Promise<State>;
+
+    /** Generate embedding vector for text */
+    embed(text: string): Promise<number[]>;
 }
 
 export interface IImageDescriptionService extends Service {

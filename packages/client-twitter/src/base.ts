@@ -488,8 +488,11 @@ export class ClientBase extends EventEmitter {
                         content: content,
                         agentId: this.runtime.agentId,
                         roomId,
-                        embedding: getEmbeddingZeroVector(),
-                        createdAt: tweet.timestamp * 1000,
+                        embedding: await generateEmbedding(
+                            this.runtime,
+                            tweet.text
+                        ),
+                        createdAt: tweet.timestamp * 1e3,
                     });
 
                     await this.cacheTweet(tweet);
@@ -602,8 +605,8 @@ export class ClientBase extends EventEmitter {
                 content: content,
                 agentId: this.runtime.agentId,
                 roomId,
-                embedding: getEmbeddingZeroVector(),
-                createdAt: tweet.timestamp * 1000,
+                embedding: await generateEmbedding(this.runtime, tweet.text),
+                createdAt: tweet.timestamp * 1e3,
             });
 
             await this.cacheTweet(tweet);
@@ -756,5 +759,14 @@ export class ClientBase extends EventEmitter {
 
             return undefined;
         }
+    }
+}
+
+async function generateEmbedding(runtime: IAgentRuntime, text: string) {
+    try {
+        return await runtime.embed(text);
+    } catch (error) {
+        elizaLogger.error("Failed to generate embedding:", error);
+        return getEmbeddingZeroVector(); // Fallback only if embedding fails
     }
 }

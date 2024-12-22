@@ -46,6 +46,7 @@ import {
     type Memory,
 } from "./types.ts";
 import { stringToUuid } from "./uuid.ts";
+import OpenAI from "openai";
 
 /**
  * Represents the runtime environment for an agent, handling message processing,
@@ -143,6 +144,8 @@ export class AgentRuntime implements IAgentRuntime {
     memoryManagers: Map<string, IMemoryManager> = new Map();
     cacheManager: ICacheManager;
     clients: Record<string, any>;
+
+    openai: OpenAI;
 
     registerMemoryManager(manager: IMemoryManager): void {
         if (!manager.tableName) {
@@ -374,6 +377,10 @@ export class AgentRuntime implements IAgentRuntime {
         (opts.evaluators ?? []).forEach((evaluator: Evaluator) => {
             this.registerEvaluator(evaluator);
         });
+
+        this.openai = new OpenAI({
+            apiKey: this.getSetting("OPENAI_API_KEY"),
+        });
     }
 
     async initialize() {
@@ -410,22 +417,27 @@ export class AgentRuntime implements IAgentRuntime {
     }
 
     async stop() {
-      elizaLogger.debug('runtime::stop - character', this.character)
-      // stop services, they don't have a stop function
+        elizaLogger.debug("runtime::stop - character", this.character);
+        // stop services, they don't have a stop function
         // just initialize
 
-      // plugins
+        // plugins
         // have actions, providers, evaluators (no start/stop)
         // services (just initialized), clients
 
-      // client have a start
-      for(const cStr in this.clients) {
-        const c = this.clients[cStr]
-        elizaLogger.log('runtime::stop - requesting', cStr, 'client stop for', this.character.name)
-        c.stop()
-      }
-      // we don't need to unregister with directClient
-      // don't need to worry about knowledge
+        // client have a start
+        for (const cStr in this.clients) {
+            const c = this.clients[cStr];
+            elizaLogger.log(
+                "runtime::stop - requesting",
+                cStr,
+                "client stop for",
+                this.character.name
+            );
+            c.stop();
+        }
+        // we don't need to unregister with directClient
+        // don't need to worry about knowledge
     }
 
     /**
@@ -1276,6 +1288,18 @@ Text: ${attachment.text}
             recentMessagesData,
             attachments: formattedAttachments,
         } as State;
+    }
+
+    async embed(text: string): Promise<number[]> {
+        if (this.getSetting("USE_OPENAI_EMBEDDING") === "true") {
+            const response = await this.openai.embeddings.create({
+                input: text,
+                model: "text-embedding-ada-002",
+            });
+            return response.data[0].embedding;
+        }
+        // Fallback to zero vector if OpenAI embeddings not enabled
+        return new Array(1536).fill(0);
     }
 }
 

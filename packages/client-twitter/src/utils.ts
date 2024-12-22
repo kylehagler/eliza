@@ -97,7 +97,7 @@ export async function buildConversationThread(
                     currentTweet.userId === client.profile.id
                         ? client.runtime.agentId
                         : stringToUuid(currentTweet.userId),
-                embedding: getEmbeddingZeroVector(),
+                embedding: await generateEmbedding(client.runtime, currentTweet.text),
             });
         }
 
@@ -254,7 +254,7 @@ export async function sendTweet(
         await wait(1000, 2000);
     }
 
-    const memories: Memory[] = sentTweets.map((tweet) => ({
+    const memories: Memory[] = await Promise.all(sentTweets.map(async (tweet) => ({
         id: stringToUuid(tweet.id + "-" + client.runtime.agentId),
         agentId: client.runtime.agentId,
         userId: client.runtime.agentId,
@@ -269,9 +269,9 @@ export async function sendTweet(
                 : undefined,
         },
         roomId,
-        embedding: getEmbeddingZeroVector(),
+        embedding: await generateEmbedding(client.runtime, tweet.text),
         createdAt: tweet.timestamp * 1000,
-    }));
+    })));
 
     return memories;
 }
@@ -362,4 +362,13 @@ function splitParagraph(paragraph: string, maxLength: number): string[] {
     }
 
     return chunks;
+}
+
+async function generateEmbedding(runtime: IAgentRuntime, text: string) {
+    try {
+        return await runtime.embed(text);
+    } catch (error) {
+        elizaLogger.error("Failed to generate embedding:", error);
+        return getEmbeddingZeroVector(); // Fallback only if embedding fails
+    }
 }
